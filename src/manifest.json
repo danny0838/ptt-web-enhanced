@@ -1,13 +1,13 @@
 {
     "manifest_version": 2,
     "name": "PTT-Web-Enhanced",
-    "version": "1.4.2",
+    "version": "1.5.0a1",
 
     "description": "幫 PTT web 版增加各種方便的功能",
 
     "applications": {
         "gecko": {
-            "id": "{27376da4-366d-4549-878e-5934e0114107}",
+            "id": "ptt-web-enhanced.beta@danny0838.addons.mozilla.org",
             "strict_min_version": "52.0"
         }
     },
