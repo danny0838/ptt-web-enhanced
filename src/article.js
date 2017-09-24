@@ -1,6 +1,4 @@
 const init = async function(){
-    await pweSettings.ready;
-
     const settings = await pweSettings.getAll();
 
     // 套件重新啟用時重新載入頁面
