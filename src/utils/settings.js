@@ -11,17 +11,36 @@ pweSettings.defaultSettings = {
 };
 
 pweSettings.get = async function(key) {
-    return (await browser.storage.sync.get({[key]: this.defaultSettings[key]}))[key];
+    const items = {[key]: this.defaultSettings[key]};
+    try {
+        return (await browser.storage.sync.get(items))[key];
+    } catch(ex) {
+        return (await browser.storage.local.get(items))[key];
+    }
 };
 
 pweSettings.getAll = async function() {
-    return await browser.storage.sync.get(this.defaultSettings);
+    const items = this.defaultSettings;
+    try {
+        return await browser.storage.sync.get(items);
+    } catch(ex) {
+        return await browser.storage.local.get(items);
+    }
 };
 
 pweSettings.set = async function(key, value) {
-    return await browser.storage.sync.set({[key]: value});
+    const items = {[key]: value};
+    try {
+        return await browser.storage.sync.set(items);
+    } catch(ex) {
+        return await browser.storage.local.set(items);
+    }
 };
 
 pweSettings.reset = async function() {
-    return await browser.storage.sync.clear();
+    try {
+        return await browser.storage.sync.clear();
+    } catch(ex) {
+        return await browser.storage.local.clear();
+    }
 };
