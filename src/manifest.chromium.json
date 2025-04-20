@@ -1,7 +1,8 @@
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "PTT Web Enhanced",
     "version": "1.9.1",
+    "minimum_chrome_version": "88",
 
     "description": "幫 PTT web 版增加各種方便的功能，例如推文顯示樓層、高亮標示點選 ID 的所有推文、標示文章作者的推文等等。",
 
@@ -17,10 +18,7 @@
     ],
 
     "background": {
-        "scripts": [
-            "lib/browser-polyfill.js",
-            "background.js"
-        ]
+        "service_worker": "background-sw.js"
     },
 
     "content_scripts": [
@@ -74,7 +72,7 @@
         }
     ],
 
-    "browser_action": {
+    "action": {
         "default_icon": {
           "16": "icon-16.png",
           "32": "icon-32.png"

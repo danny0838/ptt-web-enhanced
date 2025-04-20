@@ -15,6 +15,9 @@ export default [
       globals: {
         ...globals.browser,
 
+        // service worker
+        importScripts: "readonly",
+
         // webextension APIs
         browser: "readonly",
       },
