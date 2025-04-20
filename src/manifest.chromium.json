@@ -5,13 +5,6 @@
 
     "description": "幫 PTT web 版增加各種方便的功能，例如推文顯示樓層、高亮標示點選 ID 的所有推文、標示文章作者的推文等等。",
 
-    "browser_specific_settings": {
-        "gecko": {
-            "id": "{27376da4-366d-4549-878e-5934e0114107}",
-            "strict_min_version": "63.0"
-        }
-    },
-
     "icons": {
         "16": "icon-16.png",
         "32": "icon-32.png",
@@ -25,6 +18,7 @@
 
     "background": {
         "scripts": [
+            "lib/browser-polyfill.js",
             "background.js"
         ]
     },
@@ -37,6 +31,7 @@
                 "https://www.ptt.cc/bbs/*/search?*"
             ],
             "js": [
+                "lib/browser-polyfill.js",
                 "utils/settings.js",
                 "utils/helpers.js",
                 "board.js"
@@ -53,6 +48,7 @@
                 "https://www.ptt.cc/bbs/*/M.*.html?*"
             ],
             "js": [
+                "lib/browser-polyfill.js",
                 "utils/settings.js",
                 "utils/helpers.js",
                 "article.js"
@@ -69,6 +65,7 @@
                 "https://www.ptt.cc/ask/over18?*"
             ],
             "js": [
+                "lib/browser-polyfill.js",
                 "utils/settings.js",
                 "utils/helpers.js",
                 "r18.js"

@@ -2,7 +2,11 @@
   "type": "module",
   "scripts": {
     "dev": "web-ext run",
-    "build": "web-ext build",
+    "dev:firefox": "web-ext run",
+    "dev:chromium": "node scripts/prepare.js && web-ext run -t chromium -s build",
+    "build": "npm run build:firefox && npm run build:chromium",
+    "build:firefox": "web-ext build",
+    "build:chromium": "node scripts/prepare.js && web-ext build -s build -n {name}-{version}.zip",
     "lint": "eslint"
   },
   "devDependencies": {

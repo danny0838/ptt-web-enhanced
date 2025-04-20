@@ -4,6 +4,7 @@ import globals from "globals";
 export default [
   {
     ignores: [
+      "build/",
       "src/lib/",
     ],
   },
@@ -31,6 +32,16 @@ export default [
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
+    },
+  },
+  {
+    files: [
+      "scripts/**/*.js",
+    ],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: globals.node,
     },
   },
 ];
