@@ -1,6 +1,7 @@
 {
   "type": "module",
   "scripts": {
+    "dev": "web-ext run",
     "build": "web-ext build",
     "lint": "eslint"
   },
