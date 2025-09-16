@@ -1,0 +1,183 @@
+name: Publish extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        type: choice
+        options:
+          - development
+          - production
+        default: production
+
+permissions:
+  # for updating tag/release
+  contents: write
+
+jobs:
+  main:
+    name: Build and create tag
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    outputs:
+      version: ${{ steps.config.outputs.version }}
+      tag_name: ${{ steps.config.outputs.tag_name }}
+      ext_path_xpi: ${{ steps.config.outputs.ext_path_xpi }}
+      ext_path_zip: ${{ steps.config.outputs.ext_path_zip }}
+      artifact_dir: ${{ steps.config.outputs.artifact_dir }}
+      artifact_xpi: ${{ steps.config.outputs.artifact_xpi }}
+      artifact_zip: ${{ steps.config.outputs.artifact_zip }}
+
+      publish_firefox: ${{ steps.config.outputs.publish_firefox }}
+      publish_chrome: ${{ steps.config.outputs.publish_chrome }}
+      publish_edge: ${{ steps.config.outputs.publish_edge }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Configure and verify
+        id: config
+        run: |
+          VERSION=$(jq -r '.version' 'src/manifest.json')
+          for file in src/manifest.*.json; do
+            VERSION2=$(jq -r '.version' "$file")
+            if [ "$VERSION" != "$VERSION2" ]; then
+              echo "❌ Mismatching manifest version: '$file'"
+              exit 1
+            fi
+          done
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
+          echo "ext_path_xpi=dist/ptt_web_enhanced-$VERSION.xpi" >> $GITHUB_OUTPUT
+          echo "ext_path_zip=dist/ptt_web_enhanced-$VERSION.zip" >> $GITHUB_OUTPUT
+          echo "artifact_dir=dist" >> $GITHUB_OUTPUT
+          echo "artifact_xpi=ptt_web_enhanced-xpi" >> $GITHUB_OUTPUT
+          echo "artifact_zip=ptt_web_enhanced-zip" >> $GITHUB_OUTPUT
+
+          echo "publish_firefox=$([ -z "${{ vars.FIREFOX_EXTENSION_CHANNEL }}" ] && echo '' || echo '1')" >> $GITHUB_OUTPUT
+          echo "publish_chrome=$([ -z "${{ vars.CHROME_EXTENSION_ID }}" ] && echo '' || echo '1')" >> $GITHUB_OUTPUT
+          echo "publish_edge=$([ -z "${{ vars.EDGE_PRODUCT_ID }}" ] && echo '' || echo '1')" >> $GITHUB_OUTPUT
+
+      - name: Set extension name suffix
+        if: vars.EXTENSION_NAME_SUFFIX != ''
+        run: |
+          for file in src/manifest*.json; do
+            echo "Updating '$file'..."
+            jq '.name += "${{ vars.EXTENSION_NAME_SUFFIX }}"' "$file" > .tmp.json
+            mv .tmp.json "$file"
+          done
+
+      - name: Set Firefox extension ID
+        if: vars.FIREFOX_EXTENSION_ID != ''
+        run: |
+          for file in src/manifest.json; do
+            echo "Updating '$file'..."
+            jq '.browser_specific_settings.gecko.id = "${{ vars.FIREFOX_EXTENSION_ID }}"' "$file" > .tmp.json
+            mv .tmp.json "$file"
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Verify no code issue
+        run: npm run lint
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Create Git tag
+        if: github.event.inputs.environment == 'production'
+        run: |
+          git tag --force ${{ steps.config.outputs.tag_name }}
+          git push origin ${{ steps.config.outputs.tag_name }}
+
+      - name: Upload artifact (XPI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.config.outputs.artifact_xpi }}
+          path: ${{ steps.config.outputs.ext_path_xpi }}
+
+      - name: Upload artifact (ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.config.outputs.artifact_zip }}
+          path: ${{ steps.config.outputs.ext_path_zip }}
+
+  upload_firefox:
+    name: Upload to Firefox Add-ons
+    if: needs.main.outputs.publish_firefox != ''
+    runs-on: ubuntu-latest
+    needs: main
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.main.outputs.artifact_xpi }}
+          path: ${{ needs.main.outputs.artifact_dir }}
+
+      - name: Upload to Firefox Add-ons
+        uses: kewisch/action-web-ext@v1
+        with:
+          cmd: sign
+
+          # 'listed' or 'unlisted'
+          channel: ${{ vars.FIREFOX_EXTENSION_CHANNEL }}
+
+          source: ${{ needs.main.outputs.ext_path_xpi }}
+          artifacts: dist
+          apiKey: ${{ secrets.FIREFOX_API_KEY }}
+          apiSecret: ${{ secrets.FIREFOX_API_SECRET }}
+
+  upload_chrome:
+    name: Upload to Chrome Web Store
+    if: needs.main.outputs.publish_chrome != ''
+    runs-on: ubuntu-latest
+    needs: main
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.main.outputs.artifact_zip }}
+          path: ${{ needs.main.outputs.artifact_dir }}
+
+      - name: Upload to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: ${{ needs.main.outputs.ext_path_zip }}
+          extension-id: ${{ vars.CHROME_EXTENSION_ID }}
+
+          # https://github.com/fregante/chrome-webstore-upload-keys
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+  upload_edge:
+    name: Upload to Microsoft Edge Add-ons
+    if: needs.main.outputs.publish_edge != ''
+    runs-on: ubuntu-latest
+    needs: main
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.main.outputs.artifact_zip }}
+          path: ${{ needs.main.outputs.artifact_dir }}
+
+      - name: Upload to Microsoft Edge Add-ons
+        uses: wdzeng/edge-addon@v2
+        with:
+          zip-path: ${{ needs.main.outputs.ext_path_zip }}
+          product-id: ${{ vars.EDGE_PRODUCT_ID }}
+          client-id: ${{ secrets.EDGE_CLIENT_ID }}
+          api-key: ${{ secrets.EDGE_API_KEY }}
